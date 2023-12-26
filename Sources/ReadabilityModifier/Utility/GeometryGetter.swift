@@ -1,43 +1,21 @@
 import SwiftUI
 
-/// Place this struct as a background of the view to get its frame outside of its scope
-/// - Parameter rect: A binding of the CGRect that observes the frame of the View
-struct GeometryGetter: View
-{
-    @Binding var rect: CGRect
+struct SizePreferenceKey: PreferenceKey {
+    public static var defaultValue: CGSize = .zero
 
-    init(rect: Binding<CGRect>)
-    {
-        self._rect = rect
-    }
+    public static func reduce(value: inout CGSize, nextValue: () -> CGSize) {}
+}
 
-    var body: some View
-    {
-        GeometryReader
-        {
-            geometry in
-
-            makeView(geometry: geometry)
+struct SizeModifier: ViewModifier {
+    private var sizeView: some View {
+        GeometryReader { geometry in
+            Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
         }
     }
 
-    private func makeView(geometry: GeometryProxy) -> some View
-    {
-        DispatchQueue.main.async
-        {
-            self.rect = geometry.frame(in: .global)
-        }
-        return Rectangle().fill(Color.clear)
+    public init() {}
+    public func body(content: Content) -> some View {
+        content.background(sizeView)
     }
 }
 
-/// Place this struct as a background of the view to get its frame outside of its scope
-/// - Parameter rect: A binding of the CGRect that observes the frame of the View
-/// - Returns: The view that the readableContentGuide padding is applied to
-extension View
-{
-    func observeFrame(rect: Binding<CGRect>) -> some View
-    {
-        background(GeometryGetter(rect: rect))
-    }
-}

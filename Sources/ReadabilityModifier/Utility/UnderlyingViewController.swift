@@ -3,87 +3,61 @@ import UIKit
 
 extension View
 {
-    func inject<SomeView: View>(_ view: SomeView) -> some View
-    {
-        overlay(view.frame(width: 0, height: 0))
+    func inject<SomeView: View>(_ view: SomeView) -> some View {
+        overlay(view.frame(maxWidth: .infinity, maxHeight: .infinity).allowsHitTesting(false))
     }
 
-    func underlyingViewController(customize: @escaping (UIViewController) -> ()) -> some View
-    {
+    func underlyingViewController(customize: @escaping (UIViewController) -> ()) -> some View {
         inject(
             UIKitUnderlyingViewController(
-                selector: \.parent,
-                customize: customize
+                sizeDidChangeCallback: customize
             )
         )
     }
 }
 
-class UnderlyingUIViewController: UIViewController
-{
-    required init()
-    {
+class UnderlyingUIViewController: UIViewController {
+    let sizeDidChangeCallback: ((UIViewController) -> Void)
+    required init(sizeDidChangeCallback: @escaping ((UIViewController) -> Void)) {
+        self.sizeDidChangeCallback = sizeDidChangeCallback
         super.init(nibName: nil, bundle: nil)
-        view = UnderlyingUIView()
     }
 
     @available(*, unavailable)
-    required init?(coder _: NSCoder)
-    {
+    required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-}
-
-struct UIKitUnderlyingViewController<TargetViewControllerType: UIViewController>: UIViewControllerRepresentable
-{
-    let selector: (UnderlyingUIViewController) -> TargetViewControllerType?
-    let customize: (TargetViewControllerType) -> Void
-
-    init(
-        selector: @escaping (UIViewController) -> TargetViewControllerType?,
-        customize: @escaping (TargetViewControllerType) -> Void
-    )
-    {
-        self.selector  = selector
-        self.customize = customize
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.view.isUserInteractionEnabled = false
+        self.view.isHidden = true
     }
-
-    func makeUIViewController(
-        context _: UIViewControllerRepresentableContext<UIKitUnderlyingViewController>
-    ) -> UnderlyingUIViewController
-    {
-        UnderlyingUIViewController()
-    }
-
-    func updateUIViewController(
-        _ uiViewController: UnderlyingUIViewController,
-        context _: UIViewControllerRepresentableContext<UIKitUnderlyingViewController>
-    )
-    {
-        DispatchQueue.main.async
-        {
-            guard let targetView = selector(uiViewController)
-            else
-            {
-                return
-            }
-            customize(targetView)
+    
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        
+        if let parent = self.parent {
+            self.sizeDidChangeCallback(parent)
         }
     }
 }
 
-class UnderlyingUIView: UIView
-{
-    required init()
-    {
-        super.init(frame: .zero)
-        isHidden = true
-        isUserInteractionEnabled = false
+struct UIKitUnderlyingViewController<TargetViewControllerType: UIViewController>: UIViewControllerRepresentable {
+    let sizeDidChangeCallback: (UIViewController) -> Void
+
+    init(sizeDidChangeCallback: @escaping (UIViewController) -> Void) {
+        self.sizeDidChangeCallback = sizeDidChangeCallback
     }
 
-    @available(*, unavailable)
-    required init?(coder _: NSCoder)
-    {
-        fatalError("init(coder:) has not been implemented")
+    func makeUIViewController(
+        context _: UIViewControllerRepresentableContext<UIKitUnderlyingViewController>) -> UnderlyingUIViewController {
+        UnderlyingUIViewController(sizeDidChangeCallback: sizeDidChangeCallback)
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UnderlyingUIViewController,
+        context _: UIViewControllerRepresentableContext<UIKitUnderlyingViewController>) {
     }
 }

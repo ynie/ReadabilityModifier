@@ -51,15 +51,11 @@ public struct ReadableContentGuideViewModifier: ViewModifier
             {
                 // iPad is in Splitscreen and should use introspect because initializing an empty UIViewController always uses the full screen size instead of the Splitscreen window
                 content
-                    .underlyingViewController
-                    {
-                        viewController in
-
+                    .underlyingViewController { viewController in
                         updateWidthAndPadding(from: viewController)
                     }
                     // Observe so underlyingViewController gets called
                     .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in }
-                    .onChange(of: rect, perform: { _ in })
             }
             else
             {
@@ -83,13 +79,11 @@ public struct ReadableContentGuideViewModifier: ViewModifier
                     }
             }
         }
-        .observeFrame(rect: $rect)
+        .modifier(SizeModifier())
+        .onPreferenceChange(SizePreferenceKey.self) { self.rect = CGRect(origin: .zero, size: $0) }
     }
 
-    private func updateWidthAndPadding(
-        from viewController: UIViewController = UIViewController()
-    )
-    {
+    private func updateWidthAndPadding(from viewController: UIViewController = UIViewController()) {
         let safeAreaInsets = UIApplication.shared.safeAreaInsets
         let safeArea       = safeAreaInsets.left + safeAreaInsets.right
         horizontalPadding  = (viewController.view.frame.width - viewController.view.readableContentGuide.layoutFrame.width + extraSpacing - safeArea) / 2 + (isPadInSplitscreenMode ? 0 : 16)

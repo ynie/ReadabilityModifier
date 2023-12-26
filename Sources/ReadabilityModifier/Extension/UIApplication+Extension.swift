@@ -7,11 +7,15 @@ public extension UIApplication
     ///
     var isSplitOrSlideOver: Bool
     {
+#if targetEnvironment(macCatalyst)
+        return true
+#else
         guard let window = windows
             .filter(\.isKeyWindow)
             .first
         else { return false }
         return !(window.frame.width == window.screen.bounds.width)
+#endif
     }
 
     ///
